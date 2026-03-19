@@ -14,8 +14,11 @@ class AppState: ObservableObject {
     @Published var cachedConcerts: [Concert] = []
     @Published var concertsLastRefreshedAt: Date?
 
-    // Discover: cache + 3 regenerates/day
+    // Discover: cache + 3 regenerates/day (persisted like My Shows / Local Music)
     @Published var cachedSuggestions: [ShowSuggestion] = []
+    /// City id for which cachedSuggestions were generated; nil if cache is empty or cleared.
+    private(set) var cachedDiscoverCityId: String?
+    private let cachedDiscoverCityIdKey: String = "cachedDiscoverCityId"
     private(set) var discoverRegeneratesToday: Int = 0
     private var discoverRegenerateDayKey: String { "discoverRegenerateDay" }
     private var discoverRegenerateCountKey: String { "discoverRegenerateCount" }
@@ -85,13 +88,21 @@ class AppState: ObservableObject {
            let list = try? JSONDecoder().decode([ShowSuggestion].self, from: data) {
             cachedSuggestions = list
         }
+        cachedDiscoverCityId = UserDefaults.standard.string(forKey: cachedDiscoverCityIdKey)
         updateDiscoverRegenerateCountIfNewDay()
     }
 
-    func saveCachedSuggestions(_ list: [ShowSuggestion]) {
+    /// Saves Discover results so they persist like My Shows and Local Music. Pass cityId when saving results for a city.
+    func saveCachedSuggestions(_ list: [ShowSuggestion], cityId: String? = nil) {
         cachedSuggestions = list
+        cachedDiscoverCityId = list.isEmpty ? nil : cityId
         if let data = try? JSONEncoder().encode(list) {
             UserDefaults.standard.set(data, forKey: "cachedSuggestions")
+        }
+        if let id = cachedDiscoverCityId {
+            UserDefaults.standard.set(id, forKey: cachedDiscoverCityIdKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: cachedDiscoverCityIdKey)
         }
     }
 

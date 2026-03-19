@@ -62,9 +62,18 @@ struct SuggestionsView: View {
                 if selectedCity == nil {
                     selectedCity = appState.trackedCities.first
                 }
-                // Only restore cache when one city (we know suggestions are for that city).
-                if appState.trackedCities.count == 1, !appState.cachedSuggestions.isEmpty, viewModel.suggestions.isEmpty {
-                    viewModel.suggestions = appState.cachedSuggestions
+                // Restore persisted Discover cache (same pattern as My Shows / Local Music).
+                if !appState.cachedSuggestions.isEmpty && viewModel.suggestions.isEmpty {
+                    if let cachedId = appState.cachedDiscoverCityId {
+                        if appState.trackedCities.count == 1 || selectedCity?.id == cachedId {
+                            viewModel.suggestions = appState.cachedSuggestions
+                        } else if let cityForCache = appState.trackedCities.first(where: { $0.id == cachedId }) {
+                            selectedCity = cityForCache
+                            viewModel.suggestions = appState.cachedSuggestions
+                        }
+                    } else {
+                        viewModel.suggestions = appState.cachedSuggestions
+                    }
                 }
             }
         }
@@ -111,7 +120,7 @@ struct SuggestionsView: View {
                                 Task {
                                     await viewModel.fetchSuggestions(artists: appState.favoriteArtists, cities: [city], apiKey: appState.openAIKey)
                                     if !viewModel.suggestions.isEmpty {
-                                        appState.saveCachedSuggestions(viewModel.suggestions)
+                                        appState.saveCachedSuggestions(viewModel.suggestions, cityId: city.id)
                                         appState.recordDiscoverRegenerate()
                                     }
                                 }
@@ -185,7 +194,7 @@ struct SuggestionsView: View {
                                 Task {
                                     await viewModel.fetchSuggestions(artists: appState.favoriteArtists, cities: [city], apiKey: appState.openAIKey)
                                     if !viewModel.suggestions.isEmpty {
-                                        appState.saveCachedSuggestions(viewModel.suggestions)
+                                        appState.saveCachedSuggestions(viewModel.suggestions, cityId: city.id)
                                         appState.recordDiscoverRegenerate()
                                     }
                                 }
